@@ -9,8 +9,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     server = new TCPServer(this);
-    connect(this, SIGNAL(sendReceivedDataToAllClient(QString)), server, SLOT(getReceivedDataToAllClient(QString)));
-    connect(server, SIGNAL(sendClientIP_andPort(QString, int)), this, SLOT(getClientIP_andPort(QString, int)));
+    connect(this, SIGNAL(sendReceivedDataToAllClient(QString)), server, SLOT(getReceivedDataForAllClient(QString)));
     connect(server, SIGNAL(sendMessageToMainWindow(QString)), this, SLOT(getMessageForMainWindow(QString)));
     qDebug() << QThread::currentThreadId() << "MainWINDOW";
     this->setWindowTitle("Server");
@@ -110,7 +109,7 @@ void MainWindow::addImageToXML_Doc(QDomDocument& document, QString& imagePath)
     // rewrites an image using a current text
     byteArray = QByteArray::fromBase64(data.toText().data().toAscii());
 
-    // saves a new document
+    // saves a new document with same name
     QFile file( xmlFilePath );
 
     if( !file.open( QIODevice::WriteOnly | QIODevice::Text ) )
@@ -167,19 +166,24 @@ void MainWindow::readXmlParametersAndFitImage()
     QDomDocument document;
     openDocument(document, xmlFilePath);
 
+    // if you want to add an image data to the XML file to "image" element uncomment line below
+    //            QString imagePath = ":/resources/images/earth.bmp";
+    //            addImageToXML_Doc(document, imagePath);
+
     // gets a root element of a XML file
     QDomElement root = document.firstChildElement();
 
-    // first of all is an image resizing. Rewrite document with resized image.
+    // first of all is an image resizing. Rewrite document with resized image
     QString image_text = readFirstChildXmlElementTextValue(root, "image");
     changeImageResolution(image_text);
     QString resizedImagePath = QDir::currentPath() + "/resizedImg.bmp";
 
-    //changes a file name to create another XML file
+    //changes a file name to create another XML file with a resized image
     int index = xmlFilePath.indexOf(".xml");
     xmlFilePath = xmlFilePath.insert(index, "Resized");
     qDebug() << "new xmlPath: " << xmlFilePath;
 
+    // adds a new resized image instead previous
     addImageToXML_Doc(document, resizedImagePath);
 
     // opens a document with a resized image
@@ -219,12 +223,6 @@ void MainWindow::readXmlParametersAndFitImage()
     messageForClients += ":image: " + image_text;
 
     emit(sendReceivedDataToAllClient(messageForClients));
-
-    // if you want to add an image data to the XML file to "image" element uncomment line below
-    //        xmlFilePath ="newpath/newfile.xml";
-    //        QString imagePath = ":/resources/images/mars.bmp";
-    //        addImageToXML_Doc(document, imagePath);
-
 }
 
 void MainWindow::on_openXmlButton_clicked()
@@ -260,13 +258,14 @@ void MainWindow::getMessageForMainWindow(QString message)
         int index = ui->comboBox_clients->findText(message.mid(deleteIpAndPort.length(), message.length() - deleteIpAndPort.length()));
         if(index != -1)
             ui->comboBox_clients->removeItem(index);
+        qDebug() << "index is: " << index;
 
     }else if(message.startsWith(clientIpAndPort))
     {
         int space_index = message.indexOf(" ");
         qDebug() << space_index;
         QString ip_address = message.mid(clientIpAndPort.length(),space_index - clientIpAndPort.length());
-        QString port = message.mid(space_index, message.length() - space_index);
+        QString port = message.mid(space_index+1, message.length() - space_index);
         qDebug( ) << "ip: "<< ip_address;
         qDebug( ) << "port: "<< port;
         ui->comboBox_clients->addItem(QString(ip_address + " " + port));
