@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/resources">
+        <file>images/earth.bmp</file>
+        <file>images/mars.bmp</file>
+    </qresource>
+</RCC>
