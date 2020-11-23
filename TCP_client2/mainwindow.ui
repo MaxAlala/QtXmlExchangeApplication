@@ -303,17 +303,7 @@
                <string notr="true">color:#000000; border: none;border-bottom: 1px solid currentColor;</string>
               </property>
               <property name="text">
-               <string>start</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="stopConnectionButton">
-              <property name="styleSheet">
-               <string notr="true">color:#000000; border: none;color:#000000; border: none;border-bottom: 1px solid currentColor;</string>
-              </property>
-              <property name="text">
-               <string>stop</string>
+               <string>start/stop</string>
               </property>
              </widget>
             </item>

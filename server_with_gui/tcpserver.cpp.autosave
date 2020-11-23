@@ -1,4 +1,5 @@
 #include "tcpserver.h"
+#include "qtcpsocketwrapper.h"
 
 TCPServer::TCPServer(QObject *parent ) : QTcpServer(parent)
 {
@@ -8,7 +9,7 @@ void TCPServer::stopServer()
 {
     close();
     qDebug() << "server was stoped.";
-    emit(stopThreads());
+    emit(sendMessageToBottom(MessageType::DELETE_TCP_CLIENT_THREAD_OBJECT));
 
 }
 
@@ -25,13 +26,14 @@ void TCPServer::startServer()
         qDebug() << "Listening incoming connections...";
 
     }
-//    qDebug() << "Server IP address is:" << this->serverAddress() << ". Server port is: " << this->serverPort();
+    //    qDebug() << "Server IP address is:" << this->serverAddress() << ". Server port is: " << this->serverPort();
 
 }
 
 void TCPServer::incomingConnection(int socketDescriptor)
 {
-    QTcpSocket * tcp_socket = new QTcpSocket();
+    // create and forget about this object
+    QTcpSocketWrapper * tcp_socket = new QTcpSocketWrapper();
     tcp_socket->setSocketDescriptor(socketDescriptor);
     qDebug() << tcp_socket->peerAddress().toString() << " "
              << tcp_socket->peerPort()
@@ -39,14 +41,12 @@ void TCPServer::incomingConnection(int socketDescriptor)
     qDebug() << QThread::currentThreadId() << "incommingConnection";
     qDebug() << socketDescriptor << " is trying to connect...";
     TCP_client_thread * thread = new TCP_client_thread(tcp_socket, socketDescriptor, this);
-
-    emit(sendMessageToMainWindow("clientip&port:" + tcp_socket->peerAddress().toString() + " " + QString::number(tcp_socket->peerPort())));
+    emit(sendMessageToTop(MessageType::SET_CLIENT_IP_AND_PORT, tcp_socket->peerAddress().toString() + " " + QString::number(tcp_socket->peerPort())));
     thread->setSocketIpAddress(tcp_socket->peerAddress().toString());
     thread->setSocketPort(QString::number(tcp_socket->peerPort()));
-    connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
-    connect(this, SIGNAL(stopThreads()), thread, SLOT(disconnected()));
-    connect(this, SIGNAL(sendReceivedDataToAllClient(QString)), thread, SLOT(getReceivedDataForAllClient(QString)));
-    connect(thread, SIGNAL(sendMessageToMainWindow(QString)), this, SLOT(getMessageForMainWindow(QString)));
+//    connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+    connect(this, SIGNAL(sendMessageToBottom(MessageTypes, QString)), thread, SLOT(getMessageForBottom(MessageTypes, QString)));
+    connect(thread, SIGNAL(sendMessageToTop(MessageTypes, QString)), this, SLOT(getMessageForTop(MessageTypes, QString)));
     thread->start();
 
 }
@@ -63,15 +63,17 @@ void TCPServer::setServer_port(int value)
 
 }
 
-void TCPServer::getMessageForMainWindow(QString message)
+void TCPServer::getMessageForTop(MessageType messageType, QString message)
 {
-    emit(sendMessageToMainWindow(message));
+    emit(sendMessageToTop(messageType, message));
 
 }
 
-void TCPServer::getReceivedDataForAllClient(QString data)
+void TCPServer::getMessageForBottom(MessageType messageType, QString data)
 {
-    savedMessageForClient = data;
-    emit(sendReceivedDataToAllClient(data));
-
+    if(messageType == MessageType::SEND_XML_PARAMETERS_TO_CLIENTS)
+    {
+        savedMessageForClient = data;
+        emit(sendMessageToBottom(messageType, data));
+    }
 }

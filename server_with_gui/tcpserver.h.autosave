@@ -19,12 +19,11 @@ public:
 
 signals:
     void stopThreads();
-    void sendClientIP_andPort(QString, int);
-    void sendReceivedDataToAllClient(QString);
-    void sendMessageToMainWindow(QString);
+    void sendMessageToBottom(MessageType messageType, QString message = "");
+    void sendMessageToTop(MessageType messageType, QString message = "");
 private slots:
-    void getMessageForMainWindow(QString);
-    void getReceivedDataForAllClient(QString);
+    void getMessageForTop(MessageType messageType, QString message = "");
+    void getMessageForBottom(MessageType messageType, QString message = "");
 protected:
     void incomingConnection(int socketDescriptor);
 

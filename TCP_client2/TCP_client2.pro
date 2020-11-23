@@ -11,11 +11,14 @@ QMAKE_CXXFLAGS += -std=c++0x
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
-    socketwrapper.cpp
+    qTcpSocketWrapper.cpp \
+    qTcpSocketWrapperThread.cpp
 
 HEADERS += \
+    clientMessageTypes.h \
     mainwindow.h \
-    socketwrapper.h
+    qTcpSocketWrapper.h \
+    qTcpSocketWrapperThread.h
 
 FORMS += \
     mainwindow.ui

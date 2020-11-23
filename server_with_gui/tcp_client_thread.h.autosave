@@ -1,0 +1,36 @@
+#ifndef TCP_CLIENT_THREAD_H
+#define TCP_CLIENT_THREAD_H
+
+#include <QThread>
+#include <QTcpSocket>
+#include <QDebug>
+#include "serverMessageTypes.h"
+#include <qtcpsocketwrapper.h>
+class TCP_client_thread : public QThread
+{
+    Q_OBJECT
+public:
+    explicit TCP_client_thread(QTcpSocketWrapper* tcp_socket, const int socketDescriptor, QObject* parent = nullptr);
+    void run();
+    QString getSocketIpAddress() const;
+    QString getSocketPort() const;
+    void setSocketIpAddress(const QString &value);
+    void setSocketPort(const QString &value);
+    void removeThreadAndSocket();
+
+signals:
+    void sendMessageToTop(MessageType messageType, QString message = "");
+    void sendMessageToBottom(MessageType messageType, QString message = "");
+public slots:
+    void getMessageForBottom(MessageType messageType, QString message = "");
+    void getMessageForTop(MessageType messageType, QString message = "");
+    void deleteThreadObject();
+private:
+    QTcpSocket* socket;
+    int socketDescriptor;
+    QString socketIpAddress;
+    QString socketPort;
+
+};
+
+#endif // TCP_CLIENT_THREAD_H

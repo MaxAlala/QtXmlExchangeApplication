@@ -13,12 +13,15 @@ QMAKE_CXXFLAGS += -std=c++0x
 SOURCES += \
     main.cpp \
     mainwindow.cpp \
-    tcp_client_thread.cpp \
-    tcpserver.cpp
+    qTcpServer.cpp \
+    qTcpSocketWrapper.cpp \
+    qTcpSocketWrapperThread.cpp
 HEADERS += \
     mainwindow.h \
-        tcp_client_thread.h \
-        tcpserver.h
+    qTcpServer.h \
+    qTcpSocketWrapper.h \
+    qTcpSocketWrapperThread.h \
+    serverMessageType.h
 
 FORMS += \
     mainwindow.ui

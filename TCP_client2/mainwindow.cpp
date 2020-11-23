@@ -1,15 +1,12 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDateTime>
-
-MainWindow * MainWindow::pMainWindow = nullptr;
-
+#include <QThread>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    pMainWindow = this;
     this->setWindowTitle("Client");
 }
 
@@ -18,94 +15,79 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-
-// kind of singleton reference.
-//MainWindow *MainWindow::getMainWinPtr()
-//{
-//    return pMainWindow;
-//}
-
-//void MainWindow::disconnected()
-//{
-//    socket->deleteLater();
-//}
-
-//void MainWindow::readyRead()
-//{
-//    if (socket->waitForConnected(500))
-//    {
-//        socket->waitForReadyRead(500);
-//        Data = socket->readAll();
-//        qDebug() << Data;
-//    }
-//}
-
 void MainWindow::on_startConnectionButton_clicked()
 {
-    qDebug() << QThread::currentThreadId() << "111";
-    // it creates thread with a client socket
-    if(g_clientSocket){ qDebug() << g_clientSocket << " not empty";
-        g_clientSocket->stopSocket();
-        // if delete a dangling ptr when a program will collapse
-        g_clientSocket = nullptr;
 
+
+    if(ui->isConnectedToServer->text() == "yes")
+    {
+        // if there is some qTcpSocketWrapper object, it will receive a command to delete itself and its thread object - qTcpSocketWrapperThread
+        emit(sendMessageToBottom(MessageType::DELETE_SOCKET_WRAPPER_THREAD));
+
+        //removes an old ip&port text by sending the corresponding command to a MainWindow object
+//        getMessageForTop(MessageType::DELETE_OLD_IP_AND_PORT);
+        ui->isConnectedToServer->setText("no");
+    }else if(ui->isConnectedToServer->text() == "no")
+    {
+        // creates a thread object which will create QTcpSocketWrapper object in new thread
+        QTcpSocketWrapperThread* g_clientSocket = new QTcpSocketWrapperThread(this, server_ip_address, server_port);
+
+        //registers a custom type to be able to use it with the signal and slot system
+        qRegisterMetaType<MessageType>("MessageType");
+
+        // if run() is finished when delete thread object
+        //    connect(g_clientSocket, SIGNAL(finished()), g_clientSocket, SLOT(deleteLater()));
+
+        connect(g_clientSocket, SIGNAL(sendMessageToTop(MessageType, QString)), this, SLOT(getMessageForTop(MessageType, QString)));
+
+        connect(this, SIGNAL(sendMessageToBottom(MessageType, QString)), g_clientSocket, SLOT(getMessageForBottom(MessageType, QString)));
+
+        g_clientSocket->start();
+        ui->isConnectedToServer->setText("yes");
     }
-    else qDebug() << g_clientSocket << " empty";
-    //for(int i = 0; i < 100; i++)
-    //   new double[100000000];
-
-    qDebug() << g_clientSocket << "objectname";
-    g_clientSocket = new SocketWrapper(this, server_ip_address, server_port);
-    connect(g_clientSocket, SIGNAL(finished()), g_clientSocket, SLOT(deleteLater()));
-    connect(g_clientSocket, SIGNAL(sendReceivedData(QByteArray)), this, SLOT(getReceivedData(QByteArray)));
-    connect(g_clientSocket, SIGNAL(sendError(QString)), this, SLOT(getError(QString)));
-    connect(g_clientSocket, SIGNAL(successfullyConnectedToServer()), this, SLOT(getSuccessfullyConnectedToServerMessage()));
-    connect(g_clientSocket, SIGNAL(cantConnectToServer()), this, SLOT(getCantConnectToServerMessage()));
-    connect(this, SIGNAL(sendRequestToServer()), g_clientSocket, SLOT(getRequestToServer()));
-    connect(g_clientSocket, SIGNAL(sendTextToMainWindow(QString)), this, SLOT(getTextForMainWindow(QString)));
-
-    g_clientSocket->start();
-    //    qDebug() << "thread is dead!";
-    qDebug() << g_clientSocket << " after creation";
 }
 
 void MainWindow::on_stopConnectionButton_clicked()
 {
-    if(g_clientSocket)
-    {
-        qDebug() << QThread::currentThreadId() << "222";
-        g_clientSocket->stopSocket();
-        g_clientSocket->deleteLater();
-        // if delete a dangling ptr when a program will collapse
-        g_clientSocket = nullptr;
-    }
+    getMessageForTop(MessageType::DELETE_OLD_IP_AND_PORT);
+    emit(sendMessageToBottom(MessageType::DELETE_SOCKET_WRAPPER_THREAD));
 }
 
-void MainWindow::setImage(QString imageText)
+void MainWindow::setImage(QString& imageText)
 {
     int x = 150;
     int y = 150;
     QByteArray byteArray = QByteArray::fromBase64(imageText.toAscii());
     QPixmap pixmap = QPixmap::fromImage(QImage::fromData(byteArray, "bmp"));
-    //        qDebug() << pixmap.size();
     ui->image->setPixmap(pixmap.scaled(x, y, Qt::KeepAspectRatio));
     ui->image->show();
 }
 
-void MainWindow::setImage(QByteArray byteArray)
+void MainWindow::setImage(QByteArray& byteArray)
 {
     int x = 150;
     int y = 150;
     QPixmap pixmap = QPixmap::fromImage(QImage::fromData(byteArray, "bmp"));
-    //        qDebug() << pixmap.size();
     ui->image->setPixmap(pixmap.scaled(x,y,Qt::KeepAspectRatio));
     ui->image->show();
 }
 
-void MainWindow::getReceivedData(QByteArray data)
+void MainWindow::setCurrentTime()
 {
-    QString receivedMessage(data);
+    QDateTime local(QDateTime::currentDateTime());
 
+    //it changes the time to a current time
+    QLocale locale(QLocale::English);
+    QDateTime UTC(local);
+    UTC.setTimeSpec(Qt::UTC);
+    ui-> serverMessageTime->setText(QLocale{QLocale::English}.toString(local));
+}
+
+void MainWindow::parseReceivedMessageFromServer(QString& receivedMessage)
+{
+
+    //  a received message looks like this ":from:Earth:color:003CFF:text:sometext:image:w12312e1wqeQWEQW"
+    // here prefedined all message tags to easily work with received message
     QString fromTag = ":from:";
     QString colorTag = ":color:";
     QString textTag = ":text:";
@@ -121,7 +103,6 @@ void MainWindow::getReceivedData(QByteArray data)
     QString text_text;
     QString image_text;
 
-
     int spaceIndex;
     if(fromIndex == -1|| colorIndex == -1|| textIndex == -1|| imageIndex == -1
             || !(fromIndex < colorIndex) || !(colorIndex < textIndex) || !( textIndex < imageIndex))
@@ -131,37 +112,23 @@ void MainWindow::getReceivedData(QByteArray data)
         return;
     }
 
-    qDebug() << fromIndex << " " <<   colorIndex << " " << textIndex <<  " " << imageIndex;
-    qDebug() << fromTag.length() <<  " " << colorTag.length()
-             <<  " " << textTag.length() << " " << imageTag.length();
+    //    qDebug() << fromIndex << " " <<   colorIndex << " " << textIndex <<  " " << imageIndex;
+    //    qDebug() << fromTag.length() <<  " " << colorTag.length()
+    //             <<  " " << textTag.length() << " " << imageTag.length();
 
     from_text = receivedMessage.mid(fromTag.length(), colorIndex-fromTag.length());
     color_text = receivedMessage.mid(colorIndex+colorTag.length(), textIndex - (colorIndex+colorTag.length()));
     text_text = receivedMessage.mid(textIndex+textTag.length(), imageIndex - (textIndex+textTag.length()));
     image_text = receivedMessage.mid(imageIndex + imageTag.length(), receivedMessage.length()-(imageIndex + imageTag.length()));
-    qDebug() <<"from is: " <<  from_text << " color_text is: " << color_text << " text is: " << text_text << " image is: " << image_text;
+    //    qDebug() <<"from is: " <<  from_text << ", color is: " << color_text << ", text is: " << text_text;
     ui->from->setText(from_text);
     ui->color->setText(color_text);
     ui->text->setStyleSheet("color:#" + color_text + ";");
     ui->text->setPlainText(text_text);
     setImage(image_text);
 
-    qDebug() << "Mainwindow received a data from a thread: " << QString(data);
-    QDateTime local(QDateTime::currentDateTime());
-    qDebug() << "Local time is:" << local;
+    setCurrentTime();
 
-    //it changes time to current time
-    QLocale locale(QLocale::English);
-    QDateTime UTC(local);
-    UTC.setTimeSpec(Qt::UTC);
-    qDebug() << "UTC time is:" << UTC;
-    ui-> serverMessageTime->setText(QLocale{QLocale::English}.toString(local));
-
-}
-
-void MainWindow::getError(QString error)
-{
-    QMessageBox::warning(this, "Connection problem", error);
 }
 
 void MainWindow::on_changeServerIpButton_clicked()
@@ -177,35 +144,40 @@ void MainWindow::on_changeServerPortButton_clicked()
 
 void MainWindow::on_sendRequestToServerButton_clicked()
 {
-    emit(sendRequestToServer());
+    emit(sendMessageToBottom(MessageType::REQUEST_XML_PARAMETERS_FROM_SERVER));
 }
 
-void MainWindow::getSuccessfullyConnectedToServerMessage()
+void MainWindow::getMessageForTop(MessageType messageType, QString message)
 {
-    ui->isConnectedToServer->setText("yes");
-}
-
-void MainWindow::getCantConnectToServerMessage()
-{
-    ui->isConnectedToServer->setText("no");
-}
-
-void MainWindow::getTextForMainWindow(QString receivedTextFromThread)
-{
-    QString ipaddressTag = "ipaddress:";
-    QString localportTag = "localport:";
-    if(receivedTextFromThread.startsWith(ipaddressTag))
+    //    qDebug() << message << "receivedmessage";
+    if(messageType == MessageType::SUCCESSFULLY_CONNECTED_TO_SERVER)
     {
-        clientIpAddress = receivedTextFromThread.mid(ipaddressTag.length(), receivedTextFromThread.length()-1);
+        qDebug() << "SUCCESSFULLY_CONNECTED_TO_SERVER";
+        ui->isConnectedToServer->setText("yes");
+
+    }else if(messageType == MessageType::CANT_CONNECT_TO_SERVER || messageType == MessageType::DELETE_OLD_IP_AND_PORT )
+    {
+        qDebug() << "CANT_CONNECT_TO_SERVER || DELETE_OLD_IP_AND_PORT";
+        ui->isConnectedToServer->setText("no");
+        ui->clientPort->setText("");
+        ui->clientIp->setText("");
+    }else if(messageType == MessageType::CLIENT_IP_ADDRESS)
+    {
+        qDebug() << "IP_ADDRESS";
+        clientIpAddress = message;
         ui->clientIp->setText(clientIpAddress);
 
-
-    }else if(receivedTextFromThread.startsWith(localportTag))
+    }else if(messageType == MessageType::CLIENT_PORT)
     {
-        clientPort = receivedTextFromThread.mid(ipaddressTag.length(), receivedTextFromThread.length()-1);
+        qDebug() << "PORT";
+        clientPort = message;
         ui->clientPort->setText(clientPort);
+
+    }else if(messageType == MessageType::MESSAGE_FROM_SERVER)
+    {
+        //        qDebug() << "MESSAGE_FROM_SERVER";
+        parseReceivedMessageFromServer(message);
+
     }
 
-    qDebug() << " received text from thread: " << receivedTextFromThread;
 }
-

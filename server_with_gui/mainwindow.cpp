@@ -8,10 +8,12 @@ MainWindow::MainWindow(QWidget *parent)
       ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    server = new TCPServer(this);
-    connect(this, SIGNAL(sendReceivedDataToAllClient(QString)), server, SLOT(getReceivedDataForAllClient(QString)));
-    connect(server, SIGNAL(sendMessageToMainWindow(QString)), this, SLOT(getMessageForMainWindow(QString)));
-    qDebug() << QThread::currentThreadId() << "MainWINDOW";
+    server = new QTcpServerWrapper(this);
+
+    qRegisterMetaType<MessageType>("MessageType");
+    connect(this, SIGNAL(sendMessageToBottom(MessageType, QString)), server, SLOT(getMessageForBottom(MessageType, QString)));
+    connect(server, SIGNAL(sendMessageToTop(MessageType, QString)), this, SLOT(getMessageForTop(MessageType, QString)));
+
     this->setWindowTitle("Server");
 
 }
@@ -22,18 +24,14 @@ MainWindow::~MainWindow()
 
 }
 
-//start
 void MainWindow::on_startServerButton_clicked()
 {
-    qDebug() << QThread::currentThreadId() << "startServer";
     server->startServer();
-    qDebug() << " SERVER ADDRESS: " <<server->serverAddress();
     ui->serverip->setText(server->serverAddress().toString());
     ui->isServerRunning->setText("yes");
 
 }
 
-//stop
 void MainWindow::on_stopServerButton_clicked()
 {
     server->stopServer();
@@ -57,7 +55,6 @@ void MainWindow::setImage(QByteArray& byteArray)
     int x = 150;
     int y = 150;
     QPixmap pixmap = QPixmap::fromImage(QImage::fromData(byteArray, "bmp"));
-    //        qDebug() << pixmap.size();
     ui->image->setPixmap(pixmap.scaled(x,y,Qt::KeepAspectRatio));
     ui->image->show();
 
@@ -67,7 +64,6 @@ void changeImageResolution(QString imageText, int x = 150, int y = 150)
 {
     QByteArray byteArray = QByteArray::fromBase64(imageText.toAscii());
     QPixmap pixmap = QPixmap::fromImage(QImage::fromData(byteArray, "bmp"));
-    //    qDebug() << "before changing resolution:" <<pixmap.size();
     pixmap = pixmap.scaled(x,y,Qt::KeepAspectRatio);
 
     QFile file(QDir::currentPath() + "/resizedImg.bmp");
@@ -83,8 +79,6 @@ void MainWindow::setImageWithPath(QString& pathToImage)
     int y = 150;
     QPixmap pixmap;
     pixmap.load(pathToImage);
-    qDebug() << "setImageWithPath:" <<pixmap.size();
-    qDebug() << pathToImage;
     ui->image->setPixmap(pixmap.scaled(x,y,Qt::KeepAspectRatio));
     ui->image->show();
 
@@ -125,8 +119,6 @@ void MainWindow::addImageToXML_Doc(QDomDocument& document, QString& imagePath)
 
 QString MainWindow::readFirstChildXmlElementTextValue(QDomElement& root, QString tagname)
 {
-    // image can be very big for debug
-    //    qDebug() << tagname << " " << root.firstChildElement(tagname).text();
     return root.firstChildElement(tagname).text();
 
 }
@@ -154,7 +146,6 @@ void MainWindow::openDocument(QDomDocument& document, QString& xmlFilePath)
 void MainWindow::selectFile(QString& path, QString regularExpression)
 {
     path = QFileDialog::getOpenFileName(this, "Open a file", QDir::currentPath(), regularExpression);
-    qDebug() << "selected path: " << path;
 
 }
 
@@ -181,7 +172,6 @@ void MainWindow::readXmlParametersAndFitImage()
     //changes a file name to create another XML file with a resized image
     int index = xmlFilePath.indexOf(".xml");
     xmlFilePath = xmlFilePath.insert(index, "Resized");
-    qDebug() << "new xmlPath: " << xmlFilePath;
 
     // adds a new resized image instead previous
     addImageToXML_Doc(document, resizedImagePath);
@@ -222,7 +212,7 @@ void MainWindow::readXmlParametersAndFitImage()
     messageForClients += ":text:"   + text_text;
     messageForClients += ":image: " + image_text;
 
-    emit(sendReceivedDataToAllClient(messageForClients));
+    emit(sendMessageToBottom(MessageType::SEND_XML_PARAMETERS_TO_CLIENTS, messageForClients));
 }
 
 void MainWindow::on_openXmlButton_clicked()
@@ -231,45 +221,21 @@ void MainWindow::on_openXmlButton_clicked()
 
 }
 
-void MainWindow::getMessageForMainWindow(QString message)
+void MainWindow::getMessageForTop(MessageType messageType, QString message)
 {
-
-    // if a client was disconnected it removes ip and port from the combobox
-    QString deleteIpAndPort = "delete ip&port:";
-
-    // it asks to send xml parameters to a client
-    QString dataRequestFromClient = "Data, please";
-
-    // it gives connected client ip & port
-    QString clientIpAndPort = "clientip&port:";
-
-    qDebug() << "getmessagefromMainWindow " << message;
-
-    if(message.startsWith(dataRequestFromClient))
+    if(messageType == MessageType::DATA_REQUEST_FROM_CLIENT)
     {
-        if(messageForClients != "") emit(sendReceivedDataToAllClient(messageForClients));
-        else ui->statusbar->showMessage("client requested data, but no xml file was opened before");
-    }
-    else if(message.startsWith(deleteIpAndPort))
-    {
-        qDebug() << "delete ip& port:" + message.mid(deleteIpAndPort.length(), message.length() - deleteIpAndPort.length());
+        if(messageForClients != "") emit(sendMessageToBottom(MessageType::SEND_XML_PARAMETERS_TO_CLIENTS, messageForClients));
+        else ui->statusbar->showMessage("client requested data, but no xml file was opened before. So try to open it");
 
-        // index of combobox element with a found ip and port
-        int index = ui->comboBox_clients->findText(message.mid(deleteIpAndPort.length(), message.length() - deleteIpAndPort.length()));
+    }else if(messageType == MessageType::DELETE_IP_AND_PORT)
+    {
+        int index = ui->comboBox_clients->findText(message);
         if(index != -1)
             ui->comboBox_clients->removeItem(index);
-        qDebug() << "index is: " << index;
-
-    }else if(message.startsWith(clientIpAndPort))
+    }else if(messageType == MessageType::SET_CLIENT_IP_AND_PORT)
     {
-        int space_index = message.indexOf(" ");
-        qDebug() << space_index;
-        QString ip_address = message.mid(clientIpAndPort.length(),space_index - clientIpAndPort.length());
-        QString port = message.mid(space_index+1, message.length() - space_index);
-        qDebug( ) << "ip: "<< ip_address;
-        qDebug( ) << "port: "<< port;
-        ui->comboBox_clients->addItem(QString(ip_address + " " + port));
-
+        ui->comboBox_clients->addItem(message);
     }
 }
 
