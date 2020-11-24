@@ -1,2 +1,5 @@
 /**/*.user
 /**/*.autosave
+/source/*
+!/source/client_with_gui
+!/source/server_with_gui
