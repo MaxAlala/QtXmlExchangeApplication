@@ -3,27 +3,23 @@
 void QTcpSocketWrapper::getMessageForBottom(MessageType messageType, QString message)
 {
     if(messageType == MessageType::REQUEST_XML_PARAMETERS_FROM_SERVER)
-        write(TextMessageType::dataRequestFromClientText.toAscii());
+        write(TextMessageType::dataRequestFromClientText.toLatin1());
     else if(messageType == MessageType::TRY_TO_CONNECT_TO_SERVER)
     {
-        QAbstractSocket::SocketState state = this->state();
-        qDebug()<<state;
+//        QAbstractSocket::SocketState state = this->state();
+//        qDebug()<<state;
         connectToHost(server_ip_address, server_port);
-        qDebug() << server_ip_address << " " << server_port;
-        //        bool connected = (state() == QTcpSocket::ConnectedState);
-
-         state = this->state();
-        qDebug()<<state;
+//         state = this->state();
+//        qDebug()<<state;
         if(!waitForConnected(500))
         {
             this->close();
             this->abort();
-            qDebug()<<" socket CANT_CONNECT_TO_SERVER.";
             emit(sendMessageToTop(MessageType::CANT_CONNECT_TO_SERVER));
-            qDebug()<<state;
+//            qDebug()<<state;
             deleteLater();
             emit(disconnected());
-
+        emit(destroyThread());
         }else
         {
             emit(sendMessageToTop(MessageType::SUCCESSFULLY_CONNECTED_TO_SERVER));
@@ -32,7 +28,6 @@ void QTcpSocketWrapper::getMessageForBottom(MessageType messageType, QString mes
     }
     else if(messageType == MessageType::DELETE_SOCKET_WRAPPER_THREAD)
     {
-        qDebug()<<" socket DELETE_SOCKET_WRAPPER_THREAD.";
         deleteLater();
         emit(disconnected());
     }

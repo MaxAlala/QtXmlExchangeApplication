@@ -38,11 +38,6 @@ private slots:
     void on_sendRequestToServerButton_clicked();
 
     /*!
-    * \brief stops a connection by sending a command to a socket. Also it finishes a socket thread
-    */
-    void on_stopConnectionButton_clicked();
-
-    /*!
     * \brief start a connection by sending a command to a socket. Also it create a socket thread
     */
     void on_startConnectionButton_clicked();

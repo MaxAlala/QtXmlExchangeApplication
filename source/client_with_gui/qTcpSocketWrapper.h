@@ -15,6 +15,8 @@ public:
     void setServer_port(int value);
 
 signals:
+
+    void destroyThread();
     /*!
     * \brief this signal was created for communication through SLOT and SIGNAL between all objects in all threads.
     * At the top there is MainWindow object, then below there is QTcpSocketWrapperThread object,

@@ -43,7 +43,6 @@ void QTcpSocketWrapperThread::getMessageForTop(MessageType messageType, QString 
 
 void QTcpSocketWrapperThread::getMessageForBottom(MessageType messageType, QString message)
 {
-    qDebug() << "check thread object number; GetMessageForBottom";
     if(messageType == MessageType::SEND_XML_PARAMETERS_TO_CLIENTS)
         emit(sendMessageToBottom(messageType, message));
 

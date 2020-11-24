@@ -27,8 +27,9 @@ void QTcpServerWrapper::startServer()
 
 }
 
-void QTcpServerWrapper::incomingConnection(int socketDescriptor)
+void QTcpServerWrapper::incomingConnection(qintptr socketDescriptor)
 {
+
     QTcpSocketWrapper * tcp_socket = new QTcpSocketWrapper();
     tcp_socket->setSocketDescriptor(socketDescriptor);
     QTcpSocketWrapperThread * thread = new QTcpSocketWrapperThread(tcp_socket, socketDescriptor, this);

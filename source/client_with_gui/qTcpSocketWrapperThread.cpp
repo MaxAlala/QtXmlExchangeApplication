@@ -29,11 +29,13 @@ void QTcpSocketWrapperThread::run()
 
     connect(socket, SIGNAL(disconnected()), socket, SLOT(disconnected()));
 
+    //    connect(socket, SIGNAL(disconnected()), this, SLOT(quit()));
     // if a socket is disconnected, an event loop of its thread will be signed up for deletion
-    connect(socket, SIGNAL(disconnected()), this, SLOT(quit()));
+    connect(socket, SIGNAL(destroyThread()), this, SLOT(deleteThreadObject()));
+    connect(socket, SIGNAL(disconnected()), this, SLOT(deleteThreadObject()));
 
     // when run() is finished, a thread object will be signed up for deletion in the main event loop
-    connect(this, SIGNAL(finished()), this, SLOT(deleteThreadObject()));
+    //    connect(this, SIGNAL(finished()), this, SLOT(deleteThreadObject()));
 
     // connects a socket to a server
     emit(sendMessageToBottom(MessageType::TRY_TO_CONNECT_TO_SERVER));
@@ -69,9 +71,8 @@ void QTcpSocketWrapperThread::setServer_port(int value)
 
 void QTcpSocketWrapperThread::getMessageForBottom(MessageType messageType, QString message)
 {
-    qDebug() << QThread::currentThreadId() << "getMessageForBottom thread";
     emit(sendMessageToBottom(messageType,message));
-
+    qDebug() << "thread object got a message";
 }
 
 QString QTcpSocketWrapperThread::getServer_ip_address() const
@@ -94,7 +95,8 @@ void QTcpSocketWrapperThread::getMessageForTop(MessageType messageType, QString 
 
 void QTcpSocketWrapperThread::deleteThreadObject()
 {
-    qDebug() << "delete thread";
+    qDebug() << "disconnected thread object.";
+    quit();
     emit(sendMessageToTop(MessageType::DELETE_OLD_IP_AND_PORT));
     deleteLater();
 }

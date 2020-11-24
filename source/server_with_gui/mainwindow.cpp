@@ -43,7 +43,7 @@ void MainWindow::setImage(QString& imageText)
 {
     int x = 150;
     int y = 150;
-    QByteArray byteArray = QByteArray::fromBase64(imageText.toAscii());
+    QByteArray byteArray = QByteArray::fromBase64(imageText.toLatin1());
     QPixmap pixmap = QPixmap::fromImage(QImage::fromData(byteArray, "bmp"));
     ui->image->setPixmap(pixmap.scaled(x, y, Qt::KeepAspectRatio));
     ui->image->show();
@@ -62,7 +62,7 @@ void MainWindow::setImage(QByteArray& byteArray)
 
 void changeImageResolution(QString imageText, int x = 150, int y = 150)
 {
-    QByteArray byteArray = QByteArray::fromBase64(imageText.toAscii());
+    QByteArray byteArray = QByteArray::fromBase64(imageText.toLatin1());
     QPixmap pixmap = QPixmap::fromImage(QImage::fromData(byteArray, "bmp"));
     pixmap = pixmap.scaled(x,y,Qt::KeepAspectRatio);
 
@@ -101,7 +101,7 @@ void MainWindow::addImageToXML_Doc(QDomDocument& document, QString& imagePath)
     data = document.firstChildElement().firstChildElement("image").firstChild().toText();
 
     // rewrites an image using a current text
-    byteArray = QByteArray::fromBase64(data.toText().data().toAscii());
+    byteArray = QByteArray::fromBase64(data.toText().data().toLatin1());
 
     // saves a new document with same name
     QFile file( xmlFilePath );

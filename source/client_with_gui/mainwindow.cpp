@@ -47,17 +47,11 @@ void MainWindow::on_startConnectionButton_clicked()
     }
 }
 
-void MainWindow::on_stopConnectionButton_clicked()
-{
-    getMessageForTop(MessageType::DELETE_OLD_IP_AND_PORT);
-    emit(sendMessageToBottom(MessageType::DELETE_SOCKET_WRAPPER_THREAD));
-}
-
 void MainWindow::setImage(QString& imageText)
 {
     int x = 150;
     int y = 150;
-    QByteArray byteArray = QByteArray::fromBase64(imageText.toAscii());
+    QByteArray byteArray = QByteArray::fromBase64(imageText.toLatin1());
     QPixmap pixmap = QPixmap::fromImage(QImage::fromData(byteArray, "bmp"));
     ui->image->setPixmap(pixmap.scaled(x, y, Qt::KeepAspectRatio));
     ui->image->show();
@@ -103,7 +97,6 @@ void MainWindow::parseReceivedMessageFromServer(QString& receivedMessage)
     QString text_text;
     QString image_text;
 
-    int spaceIndex;
     if(fromIndex == -1|| colorIndex == -1|| textIndex == -1|| imageIndex == -1
             || !(fromIndex < colorIndex) || !(colorIndex < textIndex) || !( textIndex < imageIndex))
     {
@@ -152,24 +145,24 @@ void MainWindow::getMessageForTop(MessageType messageType, QString message)
     //    qDebug() << message << "receivedmessage";
     if(messageType == MessageType::SUCCESSFULLY_CONNECTED_TO_SERVER)
     {
-        qDebug() << "SUCCESSFULLY_CONNECTED_TO_SERVER";
+//        qDebug() << "SUCCESSFULLY_CONNECTED_TO_SERVER";
         ui->isConnectedToServer->setText("yes");
 
     }else if(messageType == MessageType::CANT_CONNECT_TO_SERVER || messageType == MessageType::DELETE_OLD_IP_AND_PORT )
     {
-        qDebug() << "CANT_CONNECT_TO_SERVER || DELETE_OLD_IP_AND_PORT";
+//        qDebug() << "CANT_CONNECT_TO_SERVER || DELETE_OLD_IP_AND_PORT";
         ui->isConnectedToServer->setText("no");
         ui->clientPort->setText("");
         ui->clientIp->setText("");
     }else if(messageType == MessageType::CLIENT_IP_ADDRESS)
     {
-        qDebug() << "IP_ADDRESS";
+//        qDebug() << "IP_ADDRESS";
         clientIpAddress = message;
         ui->clientIp->setText(clientIpAddress);
 
     }else if(messageType == MessageType::CLIENT_PORT)
     {
-        qDebug() << "PORT";
+//        qDebug() << "PORT";
         clientPort = message;
         ui->clientPort->setText(clientPort);
 

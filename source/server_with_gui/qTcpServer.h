@@ -71,7 +71,7 @@ protected:
     /*!
     * \brief catches new socket connections
     */
-    void incomingConnection(int socketDescriptor);
+    void incomingConnection(qintptr socketDescriptor);
 
 private:
     QString server_address;

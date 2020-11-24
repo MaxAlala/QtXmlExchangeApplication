@@ -4,7 +4,7 @@ void QTcpSocketWrapper::getMessageForBottom(MessageType messageType, QString mes
 {
     // queued connection? Should be
     if(messageType == MessageType::SEND_XML_PARAMETERS_TO_CLIENTS)
-        this->write(message.toAscii());
+        this->write(message.toLatin1());
     else if(messageType == MessageType::DELETE_SOCKET_WRAPPER_THREAD)
         deleteLater();
 }
